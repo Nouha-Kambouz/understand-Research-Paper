@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ResearchPal — Adaptive Research Paper AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700&family=JetBrains+Mono:wght@400;500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', sans-serif; background: #f8f7f4; min-height: 100vh; color: #1a1a1a; }
+
+  /* Animations */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+  @keyframes slideIn { from{opacity:0;transform:translateX(-8px)} to{opacity:1;transform:translateX(0)} }
+
+  /* Header */
+  header { background: #1a1a2e; padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+  .logo { display: flex; align-items: center; gap: 14px; }
+  .logo-icon { width: 40px; height: 40px; background: linear-gradient(135deg, #4f66d4, #8b5cf6); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+  .logo-title { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 700; color: #fff; }
+  .logo-sub { font-size: 10px; color: #8899cc; text-transform: uppercase; letter-spacing: 1.5px; margin-top: 2px; }
+  .level-bar { display: flex; gap: 8px; flex-wrap: wrap; }
+  .level-badge { border: 2px solid transparent; cursor: pointer; border-radius: 10px; padding: 8px 14px; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500; transition: all 0.15s; background: rgba(255,255,255,0.08); color: #aab4cc; }
+  .level-badge:hover { transform: translateY(-1px); }
+  .level-badge.active-beginner { background: #e8f8f2; color: #2d9d6e; border-color: #2d9d6e; }
+  .level-badge.active-intermediate { background: #fef3e2; color: #c47d1a; border-color: #c47d1a; }
+  .level-badge.active-advanced { background: #edf2ff; color: #3b5bdb; border-color: #3b5bdb; }
+
+  /* Layout */
+  .container { max-width: 1100px; margin: 0 auto; padding: 28px 20px; display: grid; grid-template-columns: 1fr 320px; gap: 22px; }
+  @media(max-width: 768px) { .container { grid-template-columns: 1fr; } }
+
+  /* Cards */
+  .card { background: #fff; border: 1.5px solid #e8e8e8; border-radius: 14px; padding: 24px; }
+  .card + .card { margin-top: 0; }
+  .section-title { font-family: 'Playfair Display', serif; font-size: 19px; font-weight: 700; color: #1a1a1a; }
+
+  /* Textarea */
+  textarea { font-family: 'Inter', sans-serif; font-size: 14px; resize: vertical; width: 100%; border: 1.5px solid #ddd; border-radius: 10px; padding: 12px; outline: none; transition: border-color 0.15s; line-height: 1.6; }
+  textarea:focus { border-color: #3b5bdb; }
+
+  /* Buttons */
+  .primary-btn { background: #1a1a2e; color: #fff; border: none; cursor: pointer; border-radius: 10px; padding: 12px 24px; font-family: 'Inter', sans-serif; font-size: 15px; font-weight: 500; transition: all 0.15s; display: inline-flex; align-items: center; gap: 8px; }
+  .primary-btn:hover:not(:disabled) { background: #2d2d4e; transform: translateY(-1px); }
+  .primary-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .ghost-btn { background: none; border: 1.5px solid #ddd; border-radius: 8px; padding: 6px 12px; font-family: 'Inter', sans-serif; font-size: 12px; cursor: pointer; transition: all 0.15s; color: #555; }
+  .ghost-btn:hover { background: #f5f5f5; }
+  .tab-btn { border: none; background: none; cursor: pointer; padding: 8px 16px; border-radius: 8px; font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 500; transition: all 0.15s; color: #555; }
+  .tab-btn:hover { background: #eee; }
+  .tab-btn.active { background: #1a1a2e; color: #fff; }
+  .approach-btn { border: 1.5px solid #ddd; cursor: pointer; border-radius: 8px; padding: 10px 12px; background: #fff; transition: all 0.15s; font-family: 'Inter', sans-serif; font-size: 12px; flex: 1; text-align: left; }
+  .approach-btn:hover { background: #f8f8f8; }
+
+  /* Drop zone */
+  .drop-zone { border: 2px dashed #ccc; border-radius: 12px; padding: 28px 20px; text-align: center; cursor: pointer; transition: all 0.15s; background: #fafafa; }
+  .drop-zone:hover { border-color: #3b5bdb; background: #eef1ff; }
+
+  /* Result */
+  .result-card { background: #f9f9f9; border: 1.5px solid #e0e0e0; border-radius: 12px; padding: 20px; animation: fadeIn 0.3s ease; margin-top: 18px; }
+
+  /* Metric card */
+  .metric { background: #fff; border: 1.5px solid #eee; border-radius: 10px; padding: 10px 14px; text-align: center; min-width: 90px; }
+  .metric-label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+  .metric-value { font-size: 22px; font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+  .metric-unit { font-size: 11px; color: #aaa; margin-top: 2px; }
+
+  /* Spinner */
+  .spinner { width: 18px; height: 18px; border: 2.5px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0; }
+  .dark-spinner { border: 2.5px solid rgba(0,0,0,0.15); border-top-color: #333; }
+
+  /* Badge */
+  .badge { font-size: 11px; padding: 3px 9px; border-radius: 5px; font-weight: 500; display: inline-block; }
+
+  /* History */
+  .history-item { padding: 8px 10px; border-radius: 8px; cursor: pointer; transition: background 0.1s; border: 1px solid transparent; margin-bottom: 4px; }
+  .history-item:hover { background: #f0f0f0; border-color: #ddd; }
+
+  /* Cursor blink */
+  .cursor { animation: blink 1s infinite; color: #3b5bdb; font-weight: 400; }
+
+  /* Compare grid */
+  .compare-item { border-radius: 12px; padding: 16px; margin-bottom: 14px; animation: fadeIn 0.3s ease; }
+
+  /* Tab bar */
+  .tab-bar { background: #fff; border: 1.5px solid #e8e8e8; border-radius: 12px; padding: 6px; display: flex; gap: 4px; }
+
+  /* Flex helpers */
+  .flex { display: flex; }
+  .flex-col { flex-direction: column; }
+  .gap-8 { gap: 8px; }
+  .gap-12 { gap: 12px; }
+  .gap-16 { gap: 16px; }
+  .items-center { align-items: center; }
+  .justify-between { justify-content: space-between; }
+  .mb-8 { margin-bottom: 8px; }
+  .mb-12 { margin-bottom: 12px; }
+  .mb-16 { margin-bottom: 16px; }
+  .mb-18 { margin-bottom: 18px; }
+  .mt-10 { margin-top: 10px; }
+  .mt-14 { margin-top: 14px; }
+  .mt-20 { margin-top: 20px; }
+  .flex-1 { flex: 1; }
+  .text-sm { font-size: 13px; }
+  .text-xs { font-size: 11px; }
+  .text-muted { color: #888; }
+  .fw-500 { font-weight: 500; }
+  .side-stack { display: flex; flex-direction: column; gap: 16px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">📄</div>
+    <div>
+      <div class="logo-title">ResearchPal</div>
+      <div class="logo-sub">Adaptive Research Paper AI</div>
+    </div>
+  </div>
+  <div class="level-bar" id="level-bar"></div>
+
+</header>
+
+<div class="container">
+  <!-- Main column -->
+  <div style="display:flex;flex-direction:column;gap:20px;">
+
+    <!-- Paper input -->
+    <div class="card">
+      <div class="flex items-center justify-between mb-16">
+        <span class="section-title">📄 Research Paper</span>
+        <div class="flex gap-8">
+          <button class="ghost-btn" onclick="loadSample()" style="color:#3b5bdb;background:#eef1ff;border-color:#c5d0f5">Load Sample (BERT)</button>
+          <label class="ghost-btn" style="cursor:pointer">📁 Upload .txt
+            <input type="file" accept=".txt" style="display:none" onchange="readFile(this)">
+          </label>
+          <button class="ghost-btn" onclick="clearPaper()">✕ Clear</button>
+        </div>
+      </div>
+      <div id="drop-zone" class="drop-zone" onclick="document.getElementById('paper-text').focus()" style="display:none">
+        <div style="font-size:36px;margin-bottom:10px">📋</div>
+        <div style="color:#555;font-size:14px">Paste your paper abstract / full text here</div>
+        <div style="color:#aaa;font-size:12px;margin-top:6px">Or click "Load Sample" to try with the BERT paper</div>
+      </div>
+      <textarea id="paper-text" placeholder="Paste abstract or full paper text..." rows="8" oninput="onPaperChange()" style="display:block"></textarea>
+      <div id="paper-stats" class="flex gap-16 mt-10 text-xs text-muted"></div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchTab('qa',this)">💬 Q&amp;A</button>
+      <button class="tab-btn" onclick="switchTab('summary',this)">📋 Summary</button>
+      <button class="tab-btn" onclick="switchTab('compare',this)">⚖️ Compare Approaches</button>
+      <button class="tab-btn" onclick="switchTab('mindmap',this)">🗺️ Carte Mentale</button>
+    </div>
+
+    <!-- Q&A Tab -->
+    <div id="tab-qa" class="card">
+      <p class="section-title mb-16">💬 Ask a Question</p>
+      <div class="mb-14">
+        <div class="text-xs text-muted fw-500 mb-8" style="text-transform:uppercase;letter-spacing:0.5px">Prompting Strategy</div>
+        <div class="flex gap-8" id="approach-bar"></div>
+      </div>
+      <textarea id="question-text" placeholder="e.g. What is the main contribution? How does the methodology work? What are the limitations?" rows="3" style="margin-bottom:12px"
+        onkeydown="if((event.ctrlKey||event.metaKey)&&event.key==='Enter')handleQA()"></textarea>
+      <div class="flex items-center gap-12">
+        <button class="primary-btn" id="qa-btn" onclick="handleQA()">→ Get Answer</button>
+        <span class="text-xs text-muted">Ctrl+Enter</span>
+      </div>
+      <div id="qa-error" style="display:none;margin-top:14px;padding:10px 14px;background:#fef2f2;color:#c43d3d;border-radius:8px;font-size:13px"></div>
+      <div id="qa-result"></div>
+    </div>
+
+    <!-- Summary Tab -->
+    <div id="tab-summary" class="card" style="display:none">
+      <div class="flex items-center justify-between mb-18">
+        <p class="section-title">📋 Adaptive Summary</p>
+        <div class="flex gap-6" id="summary-level-bar"></div>
+      </div>
+      <div id="summary-level-info" style="border-radius:10px;padding:10px 14px;margin-bottom:18px;font-size:13px;border:1.5px solid transparent"></div>
+      <div class="flex gap-8" style="align-items:center">
+        <button class="primary-btn" id="summary-btn" onclick="handleSummary()">→ Generate Summary</button>
+      </div>
+      <div id="summary-error" style="display:none;margin-top:14px;padding:10px 14px;background:#fef2f2;color:#c43d3d;border-radius:8px;font-size:13px"></div>
+      <div id="summary-result"></div>
+    </div>
+
+    <!-- Compare Tab -->
+    <div id="tab-compare" class="card" style="display:none">
+      <p class="section-title mb-8">⚖️ Compare Prompting Approaches</p>
+      <p class="text-sm text-muted mb-18">Ask the same question using all three prompting strategies simultaneously. Great for your teacher's evaluation section!</p>
+      <textarea id="compare-question" placeholder="Enter a question to compare across all approaches..." rows="3" style="margin-bottom:14px"></textarea>
+      <button class="primary-btn" id="compare-btn" onclick="handleCompare()">→ Compare All Approaches</button>
+      <div id="compare-results" style="margin-top:20px"></div>
+    </div>
+    <!-- Mind Map Tab -->
+    <div id="tab-mindmap" class="card" style="display:none;padding:20px">
+      <div class="flex items-center justify-between mb-12">
+        <p class="section-title">🗺️ Carte Mentale</p>
+        <div class="flex gap-8">
+          <button class="ghost-btn" onclick="generateMindmap()" style="color:#3b5bdb;background:#eef1ff;border-color:#c5d0f5">✦ Générer</button>
+          <button class="ghost-btn" onclick="mmResetView()">Réinitialiser</button>
+          <button class="ghost-btn" onclick="mmExport()">Exporter PNG</button>
+        </div>
+      </div>
+      <p style="font-size:13px;color:#888;margin-bottom:14px">Visualise les concepts clés du papier sous forme de carte mentale interactive. Cliquer sur un nœud pour poser une question dessus.</p>
+      <div id="mm-wrap" style="border:1.5px solid #e8e8e8;border-radius:12px;background:#f8f7f4;overflow:hidden;position:relative;height:460px">
+        <canvas id="mm-canvas" style="display:block;cursor:grab"></canvas>
+        <div id="mm-overlay" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px">
+          <div style="font-size:36px">🗺️</div>
+          <div style="font-size:13px;color:#888;text-align:center;max-width:260px;line-height:1.6">Collez votre papier ci-dessus puis cliquez <strong>Générer</strong> pour créer la carte mentale.</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;flex-wrap:wrap;gap:8px">
+        <div style="display:flex;gap:14px;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:#888"><span style="width:10px;height:10px;border-radius:50%;background:#1a1a2e;display:inline-block"></span> Concept central</div>
+          <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:#888"><span style="width:10px;height:10px;border-radius:50%;background:#1d9e75;display:inline-block"></span> Branches principales</div>
+          <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:#888"><span style="width:10px;height:10px;border-radius:50%;background:#d85a30;display:inline-block"></span> Sous-concepts</div>
+          <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:#888"><span style="width:10px;height:10px;border-radius:50%;background:#8b5cf6;display:inline-block"></span> Détails</div>
+        </div>
+        <span id="mm-node-count" style="font-size:12px;color:#aaa"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sidebar -->
+  <div class="side-stack">
+
+    <!-- Level info -->
+    <div class="card">
+      <div class="section-title mb-14" style="font-size:15px">Current Mode</div>
+      <div id="sidebar-levels"></div>
+    </div>
+
+    <!-- Metrics guide -->
+    <div class="card">
+      <div class="section-title mb-12" style="font-size:15px">📊 Evaluation Metrics</div>
+      <div class="text-sm" style="line-height:1.8;color:#555">
+        <div class="mb-8"><strong style="color:#333">Flesch-Kincaid Score</strong><br><span style="color:#888;font-size:12px">Measures text readability (0–100)</span></div>
+        <div id="fk-guide"></div>
+      </div>
+      <div style="border-top:1px solid #f0f0f0;margin-top:12px;padding-top:12px;font-size:12px;color:#888">
+        <strong style="color:#555">Why it matters:</strong> Your teacher asked to evaluate outputs — the FK score quantifies how well the model adapts to each user level.
+      </div>
+    </div>
+
+    <!-- History -->
+    <div class="card" id="history-card" style="display:none">
+      <div class="section-title mb-12" style="font-size:15px">🕒 Recent Q&As</div>
+      <div id="history-list"></div>
+    </div>
+
+    <!-- About -->
+    <div class="card" style="background:#1a1a2e;color:#8899cc">
+      <div style="font-family:'Playfair Display',serif;color:#fff;font-size:15px;margin-bottom:10px">About ResearchPal</div>
+      <div style="font-size:12px;line-height:1.8">
+        <div>🤖 <strong style="color:#aab4cc">Model:</strong> Claude Sonnet (Transformer LLM)</div>
+        <div>📚 <strong style="color:#aab4cc">Task:</strong> QA + Adaptive Summarization</div>
+        <div>🎯 <strong style="color:#aab4cc">Strategies:</strong> Zero-shot, CoT, Few-shot</div>
+        <div>📏 <strong style="color:#aab4cc">Metric:</strong> Flesch-Kincaid readability</div>
+        <div>🏗️ <strong style="color:#aab4cc">Architecture:</strong> Transformer (claude-sonnet)</div>
+        <div>💰 <strong style="color:#aab4cc">Budget:</strong> $0 (Anthropic API)</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const LEVELS = {
+  beginner: { label:'Beginner', icon:'🌱', color:'#2d9d6e', bg:'#e8f8f2', desc:'Simple words, analogies, no jargon',
+    prompt:`You are explaining to a complete beginner with no scientific background. Use very simple everyday language. Avoid all technical jargon. Use analogies to everyday objects. Keep sentences short. Define any unavoidable technical term immediately after using it. Aim for a Flesch reading ease score above 70.` },
+  intermediate: { label:'Intermediate', icon:'📖', color:'#c47d1a', bg:'#fef3e2', desc:'Field knowledge assumed, some jargon OK',
+    prompt:`You are explaining to someone with undergraduate-level knowledge in the field. You can use domain-specific terminology but briefly clarify very specialized terms. Assume familiarity with basic concepts. Provide context and implications. Aim for a Flesch reading ease score between 40-70.` },
+  advanced: { label:'Advanced', icon:'🔬', color:'#3b5bdb', bg:'#edf2ff', desc:'Expert-level, full technical depth',
+    prompt:`You are communicating with a domain expert or PhD-level researcher. Use precise technical language freely. Go into methodological depth. Discuss statistical significance, experimental design, and theoretical implications. Compare with related literature when relevant. Aim for a Flesch reading ease score below 40.` }
+};
+
+const APPROACHES = {
+  zeroshot: { label:'Zero-shot', icon:'⚡', desc:'Direct answer', color:'#6b3fa0',
+    build: (sys) => sys },
+  cot: { label:'Chain-of-Thought', icon:'🔗', desc:'Step-by-step reasoning', color:'#c43d3d',
+    build: (sys) => sys + `\n\nFor every question, reason step by step:\n1. Locate the relevant section\n2. Extract key information\n3. Formulate answer at the appropriate level\n4. Verify completeness\nThen give your final answer.` },
+  fewshot: { label:'Few-shot', icon:'🎯', desc:'Guided by examples', color:'#1a7a4a',
+    build: (sys) => sys + `\n\nExamples of how to answer:\nQ: "What is the main contribution?"\nA (beginner): "The paper teaches computers to read text like humans do — understanding words by looking at what comes before AND after them."\nA (advanced): "The primary contribution is a bidirectional pre-training objective using masked language modeling, enabling richer contextual representations than autoregressive models."\n\nFollow the same style for the user's level.` }
+};
+
+const SAMPLE = `BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding
+
+Abstract: We introduce a new language representation model called BERT, which stands for Bidirectional Encoder Representations from Transformers. Unlike recent language representation models, BERT is designed to pre-train deep bidirectional representations from unlabeled text by jointly conditioning on both left and right context in all layers. As a result, the pre-trained BERT model can be fine-tuned with just one additional output layer to create state-of-the-art models for a wide range of tasks, such as question answering and language inference, without substantial task-specific architecture modifications.
+
+BERT is conceptually simple and empirically powerful. It obtains new state-of-the-art results on eleven natural language processing tasks, including pushing the GLUE score to 80.5% (7.7% point absolute improvement), MultiNLI accuracy to 86.7% (4.6% absolute improvement), SQuAD v1.1 question answering Test F1 to 93.2 (1.5 point absolute improvement) and SQuAD v2.0 Test F1 to 83.1 (5.1 point absolute improvement).
+
+The key technical innovations are: (1) masked language modeling (MLM) which randomly masks 15% of tokens and trains the model to predict them, (2) next sentence prediction (NSP) which trains the model to understand relationships between sentences, and (3) the transformer architecture which allows for bidirectional context through self-attention mechanisms. The model was pre-trained on BooksCorpus (800M words) and English Wikipedia (2,500M words) using 16 TPUs for 4 days.`;
+
+let currentLevel = 'intermediate';
+let currentApproach = 'zeroshot';
+let currentTab = 'qa';
+let history = [];
+
+// ── Init UI ──
+function init() {
+  renderLevelBar();
+  renderApproachBar();
+  renderSidebarLevels();
+  renderFKGuide();
+  renderSummaryLevelBar();
+  updateLevelInfo();
+}
+
+function renderLevelBar() {
+  document.getElementById('level-bar').innerHTML = Object.entries(LEVELS).map(([k,v]) =>
+    `<button class="level-badge ${currentLevel===k?'active-'+k:''}" onclick="setLevel('${k}')">${v.icon} ${v.label}</button>`
+  ).join('');
+}
+
+function renderApproachBar() {
+  document.getElementById('approach-bar').innerHTML = Object.entries(APPROACHES).map(([k,v]) =>
+    `<button class="approach-btn ${currentApproach===k?'active-approach':''}" onclick="setApproach('${k}')" id="appr-${k}"
+      style="border-color:${currentApproach===k?v.color:'#ddd'};color:${currentApproach===k?v.color:'#555'}">
+      <div style="font-weight:600">${v.icon} ${v.label}</div>
+      <div style="font-size:11px;color:#999;margin-top:2px">${v.desc}</div>
+    </button>`
+  ).join('');
+}
+
+function renderSidebarLevels() {
+  document.getElementById('sidebar-levels').innerHTML = Object.entries(LEVELS).map(([k,v]) =>
+    `<div onclick="setLevel('${k}')" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;margin-bottom:6px;cursor:pointer;
+      background:${currentLevel===k?v.bg:'transparent'};border:1.5px solid ${currentLevel===k?v.color:'transparent'};transition:all 0.15s">
+      <span style="font-size:18px">${v.icon}</span>
+      <div>
+        <div style="font-weight:500;font-size:13px;color:${currentLevel===k?v.color:'#444'}">${v.label}</div>
+        <div style="font-size:11px;color:#999">${v.desc}</div>
+      </div>
+    </div>`
+  ).join('');
+}
+
+function renderFKGuide() {
+  const items = [['70-100','#2d9d6e','Very Easy (Beginner)'],['50-70','#c47d1a','Standard (Intermediate)'],['30-50','#3b5bdb','Difficult (Advanced)'],['0-30','#c43d3d','Very Difficult (Expert)']];
+  document.getElementById('fk-guide').innerHTML = items.map(([r,c,l]) =>
+    `<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+      <span style="background:${c};width:10px;height:10px;border-radius:2px;flex-shrink:0;display:inline-block"></span>
+      <span style="font-family:'JetBrains Mono',monospace;color:${c};font-size:12px">${r}</span>
+      <span style="color:#888;font-size:12px">${l}</span>
+    </div>`
+  ).join('');
+}
+
+function renderSummaryLevelBar() {
+  document.getElementById('summary-level-bar').innerHTML = Object.entries(LEVELS).map(([k,v]) =>
+    `<button onclick="setLevel('${k}');renderSummaryLevelBar();updateLevelInfo()" style="padding:6px 12px;border-radius:8px;border:2px solid ${currentLevel===k?v.color:'#eee'};background:${currentLevel===k?v.bg:'#fff'};color:${currentLevel===k?v.color:'#888'};cursor:pointer;font-family:'Inter',sans-serif;font-size:12px;font-weight:500;transition:all 0.15s">
+      ${v.icon} ${v.label}
+    </button>`
+  ).join('');
+}
+
+function updateLevelInfo() {
+  const v = LEVELS[currentLevel];
+  const el = document.getElementById('summary-level-info');
+  el.style.background = v.bg;
+  el.style.borderColor = v.color + '44';
+  el.style.color = v.color;
+  el.innerHTML = `<strong>${v.icon} ${v.label} Mode:</strong> ${v.desc}`;
+}
+
+function setLevel(k) {
+  currentLevel = k;
+  renderLevelBar();
+  renderSidebarLevels();
+  renderSummaryLevelBar();
+  updateLevelInfo();
+}
+
+function setApproach(k) {
+  currentApproach = k;
+  renderApproachBar();
+}
+
+function switchTab(tab, btn) {
+  currentTab = tab;
+  ['qa','summary','compare','mindmap'].forEach(t => {
+    document.getElementById('tab-'+t).style.display = t===tab ? 'block' : 'none';
+  });
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  if (tab==='mindmap') { setTimeout(mmResize, 50); }
+}
+
+// ── Paper ──
+function onPaperChange() {
+  const txt = document.getElementById('paper-text').value;
+  const words = txt.split(/\s+/).filter(Boolean).length;
+  const sentences = txt.split(/[.!?]+/).filter(s=>s.trim()).length;
+  document.getElementById('paper-stats').textContent = words ? `📝 ${words} words  •  📖 ${sentences} sentences` : '';
+}
+
+function loadSample() {
+  document.getElementById('paper-text').value = SAMPLE;
+  onPaperChange();
+}
+
+function clearPaper() {
+  document.getElementById('paper-text').value = '';
+  onPaperChange();
+}
+
+function readFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => { document.getElementById('paper-text').value = e.target.result; onPaperChange(); };
+  reader.readAsText(file);
+}
+
+// ── OpenRouter API ──
+function getApiKey() {
+  // ✏️ PASTE YOUR OPENROUTER KEY BETWEEN THE QUOTES ON THE NEXT LINE:
+  const MY_KEY = '';
+  return localStorage.getItem('or_api_key') || MY_KEY;
+}
+
+async function callClaude(messages, system) {
+  const key = getApiKey();
+  if (!key) throw new Error('No API key — click the ⚙️ button in the header to enter your OpenRouter key.');
+
+  // OpenRouter uses OpenAI-compatible format
+  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + key,
+      'HTTP-Referer': 'http://localhost',
+      'X-Title': 'ResearchPal'
+    },
+    body: JSON.stringify({
+      model: 'openrouter/auto',
+      max_tokens: 1000,
+      messages: [
+        { role: 'system', content: system },
+        ...messages
+      ]
+    })
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+  return data.choices[0].message.content;
+}
+
+function buildSystemPrompt(app) {
+  const v = LEVELS[currentLevel];
+  const paper = document.getElementById('paper-text').value;
+  const base = `You are ResearchPal, an expert NLP assistant specialized in explaining research papers.
+The user's expertise level: ${currentLevel.toUpperCase()}.
+${v.prompt}
+
+Paper content:
+---
+${paper}
+---`;
+  return APPROACHES[app].build(base);
+}
+
+// ── Flesch-Kincaid ──
+function fleschKincaid(text) {
+  const sentences = text.split(/[.!?]+/).filter(s=>s.trim()).length || 1;
+  const words = text.split(/\s+/).filter(Boolean);
+  const wc = words.length || 1;
+  const syl = words.reduce((a, w) => {
+    const c = w.toLowerCase().replace(/[^a-z]/g,'');
+    return a + (c.replace(/[^aeiou]/g,'').length || 1);
+  }, 0);
+  return Math.max(0, Math.min(100, Math.round(206.835 - 1.015*(wc/sentences) - 84.6*(syl/wc))));
+}
+
+function fkLabel(s) {
+  if(s>=70) return {label:'Very Easy',color:'#2d9d6e'};
+  if(s>=50) return {label:'Standard',color:'#c47d1a'};
+  if(s>=30) return {label:'Difficult',color:'#3b5bdb'};
+  return {label:'Very Difficult',color:'#c43d3d'};
+}
+
+function fkDisplay(score, level) {
+  // For Beginner level, hide FK scores below 30 (they contradict the level expectation)
+  if (level === 'beginner' && score < 30) {
+    return { display: '—', label: 'Readable', color: '#2d9d6e' };
+  }
+  return { display: String(score), label: fkLabel(score).label, color: fkLabel(score).color };
+}
+
+function metricHtml(label, value, unit, color) {
+  return `<div class="metric"><div class="metric-label">${label}</div><div class="metric-value" style="color:${color||'#222'}">${value}</div>${unit?`<div class="metric-unit">${unit}</div>`:''}</div>`;
+}
+
+// ── Typewriter ──
+function typewrite(el, text, speed=12) {
+  let i = 0;
+  el.innerHTML = '<span class="cursor">|</span>';
+  const interval = setInterval(() => {
+    if (i < text.length) {
+      el.innerHTML = text.slice(0,i+1).replace(/\n/g,'<br>') + '<span class="cursor">|</span>';
+      i++;
+    } else {
+      el.innerHTML = text.replace(/\n/g,'<br>');
+      clearInterval(interval);
+    }
+  }, speed);
+}
+
+// ── Q&A ──
+async function handleQA() {
+  const paper = document.getElementById('paper-text').value.trim();
+  const question = document.getElementById('question-text').value.trim();
+  if (!paper || !question) return;
+
+  const btn = document.getElementById('qa-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div> Analyzing...';
+  document.getElementById('qa-error').style.display = 'none';
+  document.getElementById('qa-result').innerHTML = '';
+
+  try {
+    const sys = buildSystemPrompt(currentApproach);
+    const answer = await callClaude([{role:'user',content:question}], sys);
+    const fk = fleschKincaid(answer);
+    const words = answer.split(/\s+/).filter(Boolean).length;
+    const fkd = fkDisplay(fk, currentLevel);
+    const lv = LEVELS[currentLevel];
+    const ap = APPROACHES[currentApproach];
+
+    document.getElementById('qa-result').innerHTML = `
+      <div class="result-card">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+          <div>
+            <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Answer</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <span class="badge" style="background:${lv.bg};color:${lv.color}">${lv.icon} ${lv.label}</span>
+              <span class="badge" style="background:#f0f0f0;color:#555">${ap.icon} ${ap.label}</span>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px">
+            ${metricHtml('Readability', fkd.display, fkd.label, fkd.color)}
+            ${metricHtml('Words', words, '', '#555')}
+          </div>
+        </div>
+        <p id="qa-answer-text" style="line-height:1.75;color:#333;font-size:15px;margin:0;font-family:'Inter',sans-serif"></p>
+      </div>`;
+
+    typewrite(document.getElementById('qa-answer-text'), answer);
+
+    // Save to history
+    history.unshift({ question, level: currentLevel, approach: currentApproach, fk, words });
+    if (history.length > 10) history.pop();
+    renderHistory();
+  } catch(e) {
+    const err = document.getElementById('qa-error');
+    err.textContent = '⚠️ ' + e.message;
+    err.style.display = 'block';
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '→ Get Answer';
+}
+
+function renderHistory() {
+  if (!history.length) return;
+  document.getElementById('history-card').style.display = 'block';
+  document.getElementById('history-list').innerHTML = history.slice(0,5).map((h,i) =>
+    `<div class="history-item" onclick="replayHistory(${i})">
+      <div style="font-size:12px;color:#555;margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${h.question}</div>
+      <div style="display:flex;gap:6px;font-size:11px;color:#aaa">
+        <span>${LEVELS[h.level].icon} ${h.level}</span><span>•</span><span>FK: ${h.fk}</span>
+      </div>
+    </div>`
+  ).join('');
+}
+
+function replayHistory(i) {
+  const h = history[i];
+  document.getElementById('question-text').value = h.question;
+  setLevel(h.level);
+  setApproach(h.approach);
+}
+
+// ── Summary ──
+async function handleSummary() {
+  const paper = document.getElementById('paper-text').value.trim();
+  if (!paper) return;
+
+  const btn = document.getElementById('summary-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div> Generating...';
+  document.getElementById('summary-error').style.display = 'none';
+  document.getElementById('summary-result').innerHTML = '';
+
+  try {
+    const v = LEVELS[currentLevel];
+    const sys = `You are ResearchPal. ${v.prompt}
+
+Generate a structured summary of this research paper. Include:
+1. One-sentence TL;DR
+2. Problem being solved (2-3 sentences)  
+3. Key method/approach (3-4 sentences)
+4. Main results and numbers (2-3 sentences)
+5. Why it matters / real-world impact (2-3 sentences)
+
+Adapt ALL vocabulary strictly to the ${currentLevel} level. Paper: ${paper}`;
+
+    const summary = await callClaude([{role:'user',content:'Generate the structured summary.'}], sys);
+    const fk = fleschKincaid(summary);
+    const fkd = fkDisplay(fk, currentLevel);
+
+    document.getElementById('summary-result').innerHTML = `
+      <div class="result-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+          <span class="badge" style="background:${v.bg};color:${v.color};font-size:12px;padding:4px 10px">${v.icon} ${v.label} Summary</span>
+          <div style="display:flex;gap:8px">
+            ${metricHtml('Readability', fkd.display, fkd.label, fkd.color)}
+          </div>
+        </div>
+        <p id="summary-text" style="line-height:1.8;color:#333;font-size:15px;margin:0;font-family:'Inter',sans-serif"></p>
+      </div>`;
+
+    typewrite(document.getElementById('summary-text'), summary, 8);
+  } catch(e) {
+    const err = document.getElementById('summary-error');
+    err.textContent = '⚠️ ' + e.message;
+    err.style.display = 'block';
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '→ Generate Summary';
+}
+
+// ── Compare ──
+async function handleCompare() {
+  const paper = document.getElementById('paper-text').value.trim();
+  const question = document.getElementById('compare-question').value.trim();
+  if (!paper || !question) return;
+
+  const btn = document.getElementById('compare-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div> Running all approaches...';
+
+  const container = document.getElementById('compare-results');
+  container.innerHTML = Object.entries(APPROACHES).map(([k,v]) =>
+    `<div class="compare-item" id="cmp-${k}" style="border:1.5px solid ${v.color}33">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <span style="font-size:18px">${v.icon}</span>
+        <div>
+          <div style="font-weight:600;color:${v.color};font-size:14px">${v.label}</div>
+          <div style="font-size:11px;color:#999">${v.desc}</div>
+        </div>
+        <div class="spinner dark-spinner" style="margin-left:auto;border-top-color:${v.color};border-color:${v.color}33"></div>
+      </div>
+    </div>`
+  ).join('');
+
+  for (const [k, v] of Object.entries(APPROACHES)) {
+    try {
+      const savedLevel = currentLevel;
+      const sys = (() => {
+        const lv = LEVELS[currentLevel];
+        const base = `You are ResearchPal. The user's expertise level: ${currentLevel.toUpperCase()}.\n${lv.prompt}\n\nPaper:\n---\n${paper}\n---`;
+        return v.build(base);
+      })();
+      const answer = await callClaude([{role:'user',content:question}], sys);
+      const fk = fleschKincaid(answer);
+      const fkd = fkDisplay(fk, currentLevel);
+      const words = answer.split(/\s+/).filter(Boolean).length;
+      const el = document.getElementById('cmp-'+k);
+      el.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:18px">${v.icon}</span>
+            <div><div style="font-weight:600;color:${v.color};font-size:14px">${v.label}</div><div style="font-size:11px;color:#999">${v.desc}</div></div>
+          </div>
+          <div style="display:flex;gap:8px">${metricHtml('Readability',fkd.display,fkd.label,fkd.color)}${metricHtml('Words',words,'','#555')}</div>
+        </div>
+        <p style="line-height:1.7;color:#333;font-size:14px;margin:0;font-family:'Inter',sans-serif">${answer.replace(/\n/g,'<br>')}</p>`;
+    } catch(e) {
+      document.getElementById('cmp-'+k).innerHTML += `<p style="color:#c43d3d;font-size:13px">⚠️ ${e.message}</p>`;
+    }
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '→ Compare All Approaches';
+}
+
+
+// ── Mind Map Engine ──
+(function(){
+  let mmC, mmCtx, mmNodes=[], mmEdges=[], mmTr={x:0,y:0,scale:1};
+  let mmDrag=false, mmLast=null, mmHov=null;
+  const CLRS = {
+    root:{fill:'#1a1a2e',text:'#fff'},
+    branch:{fill:'#1d9e75',text:'#fff'},
+    sub:{fill:'#d85a30',text:'#fff'},
+    detail:{fill:'#8b5cf6',text:'#fff'}
+  };
+  const ECLRS = ['#3b5bdb99','#1d9e7599','#d85a3099','#8b5cf699'];
+
+  window.mmResize = function() {
+    mmC = document.getElementById('mm-canvas');
+    if (!mmC) return;
+    mmCtx = mmC.getContext('2d');
+    const wrap = document.getElementById('mm-wrap');
+    const r = wrap.getBoundingClientRect();
+    mmC.width = r.width; mmC.height = r.height;
+    mmDraw();
+  };
+
+  window.mmResetView = function() {
+    if (!mmC) mmResize();
+    mmTr = {x: mmC.width/2, y: mmC.height/2, scale:1};
+    mmDraw();
+  };
+
+  window.mmExport = function() {
+    if (!mmC) return;
+    const link = document.createElement('a');
+    link.download = 'carte_mentale.png';
+    link.href = mmC.toDataURL('image/png');
+    link.click();
+  };
+
+  function mmRoundRect(x,y,w,h,r){
+    mmCtx.beginPath();
+    mmCtx.moveTo(x+r,y); mmCtx.lineTo(x+w-r,y);
+    mmCtx.quadraticCurveTo(x+w,y,x+w,y+r); mmCtx.lineTo(x+w,y+h-r);
+    mmCtx.quadraticCurveTo(x+w,y+h,x+w-r,y+h); mmCtx.lineTo(x+r,y+h);
+    mmCtx.quadraticCurveTo(x,y+h,x,y+h-r); mmCtx.lineTo(x,y+r);
+    mmCtx.quadraticCurveTo(x,y,x+r,y); mmCtx.closePath();
+  }
+
+  function mmWrap(txt, maxW, fs) {
+    const words=txt.split(' '), lines=[], cur=[];
+    for (const w of words) {
+      const t=[...cur,w].join(' ');
+      if (mmCtx.measureText(t).width>maxW && cur.length){lines.push(cur.join(' '));cur.length=0;}
+      cur.push(w);
+    }
+    if(cur.length) lines.push(cur.join(' '));
+    return lines;
+  }
+
+  function mmDraw() {
+    if(!mmC||!mmCtx) return;
+    mmCtx.clearRect(0,0,mmC.width,mmC.height);
+    mmCtx.fillStyle='#f8f7f4';
+    mmCtx.fillRect(0,0,mmC.width,mmC.height);
+    if(!mmNodes.length) return;
+    mmCtx.save();
+    mmCtx.translate(mmTr.x,mmTr.y);
+    mmCtx.scale(mmTr.scale,mmTr.scale);
+
+    for(const e of mmEdges){
+      const a=mmNodes.find(n=>n.id===e.from), b=mmNodes.find(n=>n.id===e.to);
+      if(!a||!b) continue;
+      mmCtx.beginPath();
+      mmCtx.strokeStyle=ECLRS[(a.bi||0)%ECLRS.length];
+      mmCtx.lineWidth=e.lv===0?2.5:e.lv===1?1.8:1.2;
+      const mx=(a.x+b.x)/2, my=(a.y+b.y)/2-20;
+      mmCtx.moveTo(a.x,a.y);
+      mmCtx.quadraticCurveTo(mx,my,b.x,b.y);
+      mmCtx.stroke();
+    }
+
+    for(const n of mmNodes){
+      const cfg=CLRS[n.type]||CLRS.detail;
+      const pad=n.type==='root'?20:n.type==='branch'?14:10;
+      const fs=n.type==='root'?15:n.type==='branch'?13:11;
+      mmCtx.font=(n.type==='root'?'600':'500')+' '+fs+'px Inter,system-ui';
+      const mxW=n.type==='root'?160:n.type==='branch'?130:110;
+      const lines=mmWrap(n.label,mxW,fs);
+      const tw=Math.min(mxW,Math.max(...lines.map(l=>mmCtx.measureText(l).width)));
+      const bw=tw+pad*2, bh=lines.length*fs*1.4+pad*1.6;
+      n._bw=bw; n._bh=bh;
+      const isHov=n===mmHov;
+      if(isHov){mmCtx.strokeStyle=cfg.fill;mmCtx.lineWidth=2.5;mmRoundRect(n.x-bw/2-3,n.y-bh/2-3,bw+6,bh+6,12);mmCtx.stroke();}
+      mmCtx.fillStyle=cfg.fill;
+      mmRoundRect(n.x-bw/2,n.y-bh/2,bw,bh,n.type==='root'?14:10);
+      mmCtx.fill();
+      mmCtx.fillStyle=cfg.text;
+      mmCtx.textAlign='center'; mmCtx.textBaseline='middle';
+      const sy=n.y-(lines.length-1)*fs*0.7;
+      lines.forEach((l,i)=>mmCtx.fillText(l,n.x,sy+i*fs*1.4));
+    }
+    mmCtx.restore();
+  }
+
+  function mmNodeAt(sx,sy){
+    const ox=(sx-mmTr.x)/mmTr.scale, oy=(sy-mmTr.y)/mmTr.scale;
+    for(let i=mmNodes.length-1;i>=0;i--){
+      const n=mmNodes[i];
+      if(Math.abs(ox-n.x)<(n._bw||80)/2 && Math.abs(oy-n.y)<(n._bh||32)/2) return n;
+    }
+    return null;
+  }
+
+  function mmLayout(data) {
+    mmNodes=[]; mmEdges=[];
+    mmNodes.push({id:'root',label:data.title,type:'root',x:0,y:0,bi:0});
+    const branches=data.branches||[], N=branches.length, R=220;
+    branches.forEach((b,bi)=>{
+      const a=(bi/N)*Math.PI*2-Math.PI/2;
+      const bid='b'+bi;
+      mmNodes.push({id:bid,label:b.label,type:'branch',x:Math.cos(a)*R,y:Math.sin(a)*R,bi});
+      mmEdges.push({from:'root',to:bid,lv:0});
+      (b.subs||[]).forEach((s,si)=>{
+        const M=b.subs.length, a2=a+(si-(M-1)/2)*0.45, r2=380;
+        const sid=bid+'s'+si;
+        mmNodes.push({id:sid,label:s.label,type:'sub',x:Math.cos(a2)*r2,y:Math.sin(a2)*r2,bi});
+        mmEdges.push({from:bid,to:sid,lv:1});
+        (s.details||[]).forEach((d,di)=>{
+          const a3=a2+(di-(s.details.length-1)/2)*0.3, r3=530;
+          const did=sid+'d'+di;
+          mmNodes.push({id:did,label:d,type:'detail',x:Math.cos(a3)*r3,y:Math.sin(a3)*r3,bi});
+          mmEdges.push({from:sid,to:did,lv:2});
+        });
+      });
+    });
+    document.getElementById('mm-node-count').textContent=mmNodes.length+' nœuds';
+  }
+
+  function mmFit(){
+    if(!mmNodes.length||!mmC) return;
+    let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
+    for(const n of mmNodes){const bw=n._bw||80,bh=n._bh||32;minX=Math.min(minX,n.x-bw/2);maxX=Math.max(maxX,n.x+bw/2);minY=Math.min(minY,n.y-bh/2);maxY=Math.max(maxY,n.y+bh/2);}
+    const pad=60,sw=mmC.width-pad*2,sh=mmC.height-pad*2;
+    const sc=Math.min(sw/(maxX-minX||1),sh/(maxY-minY||1),1.4);
+    mmTr.scale=sc;
+    mmTr.x=mmC.width/2-((minX+maxX)/2)*sc;
+    mmTr.y=mmC.height/2-((minY+maxY)/2)*sc;
+  }
+
+  window.generateMindmap = async function() {
+    mmResize();
+    const paper = document.getElementById('paper-text').value.trim();
+    const ov = document.getElementById('mm-overlay');
+    ov.style.display='flex';
+    ov.innerHTML='<div style="width:28px;height:28px;border:2.5px solid #ddd;border-top-color:#1a1a2e;border-radius:50%;animation:mmSpin 0.8s linear infinite"></div><span style="font-size:13px;color:#888">Génération avec Claude...</span>';
+    if(!document.getElementById('mm-spin-style')){
+      const s=document.createElement('style');s.id='mm-spin-style';
+      s.textContent='@keyframes mmSpin{to{transform:rotate(360deg)}}';
+      document.head.appendChild(s);
+    }
+    try {
+      const key=getApiKey();
+      if(!key){ov.innerHTML='<span style="color:#c43d3d;font-size:13px">⚠️ Cliquez sur 🔑 Set API Key dans le header pour entrer votre clé OpenRouter.</span>';return;}
+      const res=await fetch('https://openrouter.ai/api/v1/chat/completions',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+key,'HTTP-Referer':'http://localhost','X-Title':'ResearchPal'},
+        body:JSON.stringify({
+          model:'openrouter/auto',
+          max_tokens:1000,
+          messages:[
+            {role:'system',content:`You extract structured knowledge from research papers for mind maps. Return ONLY valid JSON:
+{"title":"short title (max 5 words)","branches":[{"label":"branch (2-4 words)","subs":[{"label":"sub (2-4 words)","details":["detail (1-3 words)"]}]}]}
+Rules: 5-7 branches, 2-4 subs each, 1-3 details per sub. All labels SHORT. Return ONLY JSON, no markdown.`},
+            {role:'user',content:paper?'Extract mind map:\n\n'+paper.slice(0,3000):'Create sample mind map for BERT paper'}
+          ]
+        })
+      });
+      const data=await res.json();
+      if(data.error) throw new Error(data.error.message||JSON.stringify(data.error));
+      const raw=data.choices[0].message.content.trim().replace(/^```json\n?|```$/g,'');
+      const parsed=JSON.parse(raw);
+      mmLayout(parsed);
+      mmDraw(); mmFit(); mmDraw();
+      ov.style.display='none';
+    } catch(err){
+      ov.innerHTML='<span style="color:#c43d3d;font-size:13px">Erreur: '+err.message+'</span>';
+    }
+  };
+
+  setTimeout(()=>{
+    mmResize();
+    const c=document.getElementById('mm-canvas');
+    if(!c) return;
+    c.addEventListener('mousedown',e=>{
+      const r=c.getBoundingClientRect();
+      const n=mmNodeAt(e.clientX-r.left,e.clientY-r.top);
+      if(n){
+        const q=document.getElementById('question-text');
+        if(q){ q.value='Explique le concept : "'+n.label+'" mentionné dans ce papier de recherche.'; }
+        let toast=document.getElementById('mm-toast');
+        if(!toast){toast=document.createElement('div');toast.id='mm-toast';
+          toast.style.cssText='position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#1a1a2e;color:#fff;padding:10px 20px;border-radius:10px;font-size:13px;font-family:Inter,sans-serif;z-index:9999;pointer-events:none;transition:opacity 0.3s';
+          document.body.appendChild(toast);}
+        toast.textContent='💡 "'+n.label+'" copié dans Q&A → Allez dans l\'onglet Q&A pour poser la question';
+        toast.style.opacity='1';
+        clearTimeout(toast._t);
+        toast._t=setTimeout(()=>{toast.style.opacity='0';},3000);
+      } else {mmDrag=true;mmLast={x:e.clientX,y:e.clientY};}
+    });
+    c.addEventListener('mousemove',e=>{
+      const r=c.getBoundingClientRect();
+      if(mmDrag&&mmLast){mmTr.x+=e.clientX-mmLast.x;mmTr.y+=e.clientY-mmLast.y;mmLast={x:e.clientX,y:e.clientY};mmDraw();}
+      else{const prev=mmHov;mmHov=mmNodeAt(e.clientX-r.left,e.clientY-r.top);c.style.cursor=mmHov?'pointer':'grab';if(mmHov!==prev)mmDraw();}
+    });
+    c.addEventListener('mouseup',()=>{mmDrag=false;});
+    c.addEventListener('mouseleave',()=>{mmDrag=false;mmHov=null;mmDraw();});
+    c.addEventListener('wheel',e=>{
+      e.preventDefault();
+      const r=c.getBoundingClientRect();
+      const mx=e.clientX-r.left,my=e.clientY-r.top;
+      const d=e.deltaY<0?1.12:0.89;
+      const ns=Math.max(0.2,Math.min(4,mmTr.scale*d));
+      mmTr.x=mx-(mx-mmTr.x)*(ns/mmTr.scale);
+      mmTr.y=my-(my-mmTr.y)*(ns/mmTr.scale);
+      mmTr.scale=ns;mmDraw();
+    },{passive:false});
+  },100);
+})();
+
+function promptApiKey() {
+  const current = getApiKey();
+  const key = prompt('Paste your OpenRouter API key (sk-or-v1-...):', current || '');
+  if (key && key.trim()) {
+    localStorage.setItem('or_api_key', key.trim());
+    updateKeyBtn();
+    alert('✅ API key saved! You can now use the app.');
+  }
+}
+
+function updateKeyBtn() {
+  const has = !!getApiKey();
+  document.getElementById('key-icon').textContent = has ? '✅' : '🔑';
+  document.getElementById('key-label').textContent = has ? 'Key saved' : 'Set API Key';
+  document.getElementById('key-btn').style.borderColor = has ? '#2d9d6e' : 'rgba(255,255,255,0.2)';
+}
+
+init();
+
+</script>
+</body>
+</html>
